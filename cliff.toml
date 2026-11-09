@@ -1,0 +1,44 @@
+# git-cliff configuration for the template itself: CHANGELOG.md at the
+# repository root, tags v<version>. Used by `just changelog`, `just release`
+# and the release workflow. (template/cliff.toml.jinja is the one generated
+# packages get.)
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this template are documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and this template adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n
+"""
+body = """
+{% if version %}\
+## [{{ version }}](https://github.com/TUW-GEO/copier-canvod/releases/tag/{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## Unreleased
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+{% for commit in commits %}
+- {% if commit.breaking %}**Breaking:** {% endif %}\
+{{ commit.message | split(pat="\n") | first | upper_first | trim }} \
+([{{ commit.id | truncate(length=7, end="") }}](https://github.com/TUW-GEO/copier-canvod/commit/{{ commit.id }}))\
+{% endfor %}
+{% endfor %}\n
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+commit_parsers = [
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^feat", group = "<!-- 0 -->Features" },
+    { message = "^fix", group = "<!-- 1 -->Bug fixes" },
+    { message = "^perf", group = "<!-- 2 -->Performance" },
+    { message = "^refactor", group = "<!-- 3 -->Refactoring" },
+    { message = "^docs", group = "<!-- 4 -->Documentation" },
+    { message = "^(build|chore|ci|style|test)", skip = true },
+]
+tag_pattern = "^v[0-9]"
+sort_commits = "oldest"

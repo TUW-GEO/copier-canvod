@@ -6,5 +6,27 @@ SPDX-PackageDownloadLocation = "[[ repo_url ]]"
 [[ '[[' ]]annotations]]
 path = "**"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "[[ copyright_year ]] [[ author_name ]]"
+SPDX-FileCopyrightText = "[[ copyright_year ]] [[ author_name ]][% if affiliation %], [[ affiliation ]][% endif %]"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Build, test, docs and agent tooling from canvodpy-extensions (via the
+# copier-canvod template): its holder stays next to yours (NOTICE).
+[[ '[[' ]]annotations]]
+path = [
+  "tools/**",
+  "scripts/**",
+  "overrides/**",
+  "docs/assets/**",
+  ".github/**",
+  ".claude/**",
+  ".vale/**",
+  ".vale.ini",
+  ".pre-commit-config.yaml",
+  "Justfile",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = [
+  "[[ copyright_year ]] [[ author_name ]][% if affiliation %], [[ affiliation ]][% endif %]",
+  "2026 Nicolas François Bader, CLIMERS, TU Wien",
+]
 SPDX-License-Identifier = "Apache-2.0"

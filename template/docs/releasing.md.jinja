@@ -89,8 +89,16 @@ just release [[ dist_name ]] minor
 # commit release-notes/[[ dist_name ]]-v0.2.0.py here
 git push --no-follow-tags -u origin chore/release-[[ dist_name ]]-0.2.0
 gh pr create --fill
+[% if ci_enabled %]
 # merged once CI passes, then on main:
 git switch main && git pull origin main
 just tag
 # draft release "[[ dist_name ]] 0.2.0" appears: review, publish
+[% else %]
+# merged once `just check` and `just test` pass, then on main:
+git switch main && git pull origin main
+just tag
+gh workflow run release.yml --ref [[ dist_name ]]-v0.2.0
+# draft release "[[ dist_name ]] 0.2.0" appears: review, publish
+[% endif %]
 ```
