@@ -30,8 +30,8 @@ _envops:
   trim_blocks: true
   lstrip_blocks: true
 
-# After generation: lock and install the workspace, install the git hooks,
-# and make the first commit, so the hooks and copier update have a base.
+# After generation: start a git repository, lock the workspace and stage
+# every file. `just sync` (hooks) and the first commit are left to you.
 _tasks:
   - command: git init --initial-branch=main --quiet
     when: "[[ _copier_operation == 'copy' ]]"
@@ -49,6 +49,8 @@ dist_name:
   validator: >-
     [% if not (dist_name | regex_search('^canvod-[a-z][a-z0-9]*(-[a-z0-9]+)*$')) %]
     Must look like canvod-<name>: lower case letters and digits, words joined by single hyphens.
+    [% elif dist_name in ['canvod-auxiliary', 'canvod-config', 'canvod-grids', 'canvod-ops', 'canvod-preflight', 'canvod-readers', 'canvod-store', 'canvod-store-metadata', 'canvod-utils', 'canvod-viz', 'canvod-vod', 'canvod-filemap', 'canvod-airflow', 'canvod-adapters'] %]
+    [[ dist_name ]] is already a canvodpy or canvodpy-extensions package: choose another name.
     [% endif %]
 
 short_name:
@@ -67,12 +69,21 @@ module_name:
   validator: >-
     [% if not (module_name | regex_search('^[a-z][a-z0-9_]*$')) %]
     A Python identifier: lower case letters, digits and underscores.
+    [% elif module_name in ['and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield'] %]
+    [[ module_name ]] is a Python keyword: canvod.[[ module_name ]] can't be imported.
+    [% elif module_name in ['auxiliary', 'config', 'grids', 'ops', 'preflight', 'readers', 'store', 'store_metadata', 'utils', 'viz', 'vod', 'filemap', 'airflow', 'adapters'] %]
+    canvod.[[ module_name ]] already exists in canvodpy or canvodpy-extensions: choose another name.
     [% endif %]
 
 description:
   type: str
   help: "One sentence: what the package does (pyproject.toml, README, docs)"
-  validator: "[% if not description %]Required.[% endif %]"
+  validator: >-
+    [% if not description %]
+    Required.
+    [% elif '"' in description or '\\' in description %]
+    No double quotes or backslashes: the answer goes into TOML and YAML strings.
+    [% endif %]
 
 target:
   type: str
@@ -123,8 +134,24 @@ repo_name:
 
 author_name:
   type: str
-  help: "Your name (pyproject.toml, LICENSE notice, CITATION.cff)"
-  validator: "[% if not author_name %]Required.[% endif %]"
+  help: "Your full name (pyproject.toml, NOTICE, REUSE.toml, SECURITY.md, CITATION.cff)"
+  validator: >-
+    [% if not author_name %]
+    Required.
+    [% elif '"' in author_name or '\\' in author_name %]
+    No double quotes or backslashes: the answer goes into TOML and YAML strings.
+    [% endif %]
+
+author_family_name:
+  type: str
+  help: "Your family name, the end of your full name, with any particles (e.g. van der Berg); CITATION.cff"
+  default: "[[ author_name.split(' ')[-1] ]]"
+  validator: >-
+    [% if not author_family_name %]
+    Required.
+    [% elif not (author_name == author_family_name or author_name.endswith(' ' ~ author_family_name)) %]
+    Your full name must end with the family name.
+    [% endif %]
 
 author_email:
   type: str
@@ -147,11 +174,19 @@ affiliation:
   type: str
   help: "Your affiliation, e.g. a research unit and university (empty: none)"
   default: ""
+  validator: >-
+    [% if false %]
+    [% elif '"' in affiliation or '\\' in affiliation %]
+    No double quotes or backslashes: the answer goes into TOML and YAML strings.
+    [% endif %]
 
 github_handle:
   type: str
-  help: "Your GitHub user name: code owner of every file"
-  default: "[[ github_owner ]]"
+  help: "Your GitHub user name (not an organisation): code owner of every file"
+  validator: >-
+    [% if not (github_handle | regex_search('^[A-Za-z0-9](-?[A-Za-z0-9])*$')) %]
+    A GitHub user name: letters, digits and single hyphens, without @.
+    [% endif %]
 
 copyright_year:
   type: int

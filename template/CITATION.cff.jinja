@@ -6,8 +6,10 @@ abstract: >
   [[ description ]] [[ dist_name ]] is a package for canVODpy, an open
   Python ecosystem for GNSS-Transmissometry canopy VOD retrievals.
 authors:
-  - family-names: "[[ author_name.split(' ')[-1] ]]"
-    given-names: "[[ ' '.join(author_name.split(' ')[:-1]) ]]"
+  - family-names: "[[ author_family_name ]]"
+[% if author_name != author_family_name %]
+    given-names: "[[ author_name[:-(author_family_name | length)] | trim ]]"
+[% endif %]
     email: [[ author_email ]]
 [% if affiliation %]
     affiliation: "[[ affiliation ]]"

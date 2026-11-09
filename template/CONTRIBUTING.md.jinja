@@ -194,5 +194,11 @@ writes `packages/[[ dist_name ]]/CHANGELOG.md` from the commits
 ([git-cliff](https://git-cliff.org), `cliff.toml`). A minor or major release
 also gets a release notebook, `release-notes/[[ dist_name ]]-v<version>.py`,
 copied from `release-notes/_template.py` and committed on the release
+[% if ci_enabled %]
 branch. Pushing the tag drafts a GitHub release from the changelog
 (`release.yml`); publish it by hand.
+[% else %]
+branch. With the workflows off, draft the GitHub release from the
+changelog by hand, `gh workflow run release.yml --ref <tag>`, then
+publish it.
+[% endif %]

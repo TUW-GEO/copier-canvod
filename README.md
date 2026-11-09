@@ -52,7 +52,10 @@ canvodpy uses: `needs-triage`, `needs-info`, `ready-for-agent`,
 | `canvodpy_deps` | `canvod-grids`, `canvod-viz` | Dependencies, bound `>=1.0.0,<2` |
 | `target` | canvodpy-extensions | Where it should end up (`MOVING.md`) |
 | `github_owner`, `repo_name` | your user, `canvod-science-viz` | Every link |
-| `author_name`, `author_email`, `author_orcid`, `affiliation` | | `pyproject.toml`, `NOTICE`, `CITATION.cff`, `REUSE.toml` |
+| `author_name`, `author_email`, `author_orcid`, `affiliation` | | `pyproject.toml`, `NOTICE`, `SECURITY.md`, `CITATION.cff`, `REUSE.toml` |
+| `author_family_name` | `van der Berg` | `CITATION.cff`: the end of `author_name`, with any particles |
+| `github_handle` | your GitHub user (not an organisation) | Code owner of every file (`.github/CODEOWNERS`) |
+| `copyright_year` | `2026` | `NOTICE`, `REUSE.toml` |
 | `ci_enabled` | `false` | Whether GitHub Actions run automatically (see below) |
 | `docs_domain`, `impressum_url` | empty | GitHub Pages domain, legal notice in the docs footer |
 
@@ -100,7 +103,7 @@ canvod-<name>/
 | [Zensical](https://zensical.org/) + [mkdocstrings](https://mkdocstrings.github.io/) | Docs site, API pages from the docstrings (numpy style) | `just docs`, `just docs-build` |
 | [Vale](https://vale.sh/) | Language of the docs pages (Google style, canVODpy vocabulary) | `just docs-lint` |
 | [lychee](https://lychee.cli.rs/) | Links of the built docs site | `just docs-links` |
-| [REUSE](https://reuse.software/) | License and copyright of every file (`REUSE.toml`) | |
+| [REUSE](https://reuse.software/) | License and copyright of every file (`REUSE.toml`) | `just check-reuse` |
 
 **Git hooks** (`.pre-commit-config.yaml`). On every commit: ruff lint
 and format, `uv lock` up to date, trailing whitespace, end of file, large
@@ -125,7 +128,8 @@ message: commitizen. Before a push: ty.
 
 Every action is pinned to a commit, with read-only permissions unless a
 job needs more. **Dependabot** proposes weekly updates of the actions, the
-pre-commit hooks and the uv dependencies, with the same one-week cooldown.
+pre-commit hooks and the uv dependencies; the uv updates wait a week, as
+`uv lock` does.
 
 **Off by default.** A private repository pays for GitHub Actions minutes
 beyond a free monthly quota, so with `ci_enabled: false` (the default)
@@ -181,8 +185,47 @@ array of tables is written `[[ '[[' ]]name]]`. Most files are
 canvodpy-extensions' own: change them there first, then here.
 
 ```bash
-just test          # generate with CI off and on, then check, test and build the docs of both
+just test          # generate four packages and check each; bad answers must be refused
 ```
+
+`just test` generates a package with CI off, one with CI on, one with
+awkward answers (a long name, a family name with particles, every
+optional answer set, several dependencies) and one with a one-word author
+name. For each it checks that every TOML, YAML, `CITATION.cff` file and
+Markdown front matter parses (`tests/check_generated.py`), then runs
+`just check`, `just test`, `just check-release-notes`, `just check-reuse`
+and the docs build. Last, it checks that copier refuses answers that
+would break a package: canvodpy's own names, Python keywords, quotes in
+answers that go into TOML or YAML strings.
+
+### Releasing the template
+
+The template is released as git tags `v<version>` with a GitHub release,
+and `copier copy` and `copier update` take the newest tag. Versions
+follow canvodpy's rules, applied to the template:
+
+| Change | Goes into |
+|---|---|
+| A fix: a wrong file, hook or text in generated packages | the next patch version |
+| A new question, file or recipe, or a question marked as going away | the next minor version |
+| A question renamed or removed, or a change that breaks `copier update` of existing packages | the next major version |
+
+If it is unclear which, ask the maintainers instead of guessing.
+
+```bash
+git switch -c chore/release-0.2.0
+just changelog                                  # changes since the last release
+just release minor                              # or patch, major, or a version such as 0.2.0rc1
+git push --no-follow-tags -u origin chore/release-0.2.0
+# open the PR, merge it, then on an up-to-date main:
+just tag                                        # tags main and pushes the tag
+```
+
+`just release` runs `just test`, then writes the new section of
+`CHANGELOG.md` from the commits. Pushing the tag drafts a GitHub release
+from that section; publish it by hand. From a pre-release such as
+`0.2.0rc1`, give the final version (`just release 0.2.0`), since
+`minor` would skip it.
 
 ## License
 

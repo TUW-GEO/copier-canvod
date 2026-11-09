@@ -1,0 +1,10 @@
+version = 1
+SPDX-PackageName = "copier-canvod"
+SPDX-PackageSupplier = "Nicolas François Bader <support@canvodpy.eu>"
+SPDX-PackageDownloadLocation = "https://github.com/TUW-GEO/copier-canvod"
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Nicolas François Bader, CLIMERS, TU Wien"
+SPDX-License-Identifier = "Apache-2.0"

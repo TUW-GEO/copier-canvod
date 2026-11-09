@@ -124,6 +124,10 @@ check-wait-exemptions:
 check-agent-docs:
     uv run --no-sync python tools/check_agent_docs.py
 
+# check that every file has a license and copyright (REUSE.toml, REUSE 3.3)
+check-reuse:
+    uvx --with charset-normalizer reuse lint
+
 # lint, format and type-check all packages, check the agent docs
 check: check-lint check-format check-types check-agent-docs
 
@@ -241,7 +245,12 @@ release PKG VERSION: (test-package PKG)
     echo "Next steps (main requires a PR, see CONTRIBUTING.md):"
     echo "  1. Push this branch, open a PR and merge it"
     echo "  2. git checkout main && git pull, then: just tag {{PKG}}"
+[% if ci_enabled %]
     echo "  3. Publish the draft GitHub Release that the tag creates"
+[% else %]
+    echo "  3. gh workflow run release.yml --ref ${tag} (the workflows are off),"
+    echo "     then publish the draft GitHub Release it creates"
+[% endif %]
 
 # tag the current version of PKG on an up-to-date main and push the tag
 tag PKG="[[ dist_name ]]":
