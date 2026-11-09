@@ -80,26 +80,32 @@ test:
             && just check-release-notes && just check-reuse && uv run zensical build --clean)
     done
     # answers that must be refused
+    # refused: copier must stop with the validation message of that question
     refused() {
-        local label=$1; shift
-        if generate -d dist_name=canvod-refused-test -d 'description=Refused.' \
+        local label=$1 question=$2; shift 2
+        local log
+        if log=$(generate -d dist_name=canvod-refused-test -d 'description=Refused.' \
             -d github_owner=example -d github_handle=jrrt -d author_name='J. R. R. Tolkien' \
             -d author_email=jrrt@example.org -d copyright_year=2026 \
-            -d 'canvodpy_deps=["canvod-utils"]' "$@" . "$out/refused" >/dev/null 2>&1; then
+            -d 'canvodpy_deps=["canvod-utils"]' "$@" . "$out/refused" 2>&1); then
             echo "not refused: $label" >&2; exit 1
         fi
         rm -rf "$out/refused"
+        if ! grep -qF "Validation error for question '$question'" <<<"$log"; then
+            echo "failed, but not on the validator of $question: $label" >&2
+            echo "$log" | tail -5 >&2; exit 1
+        fi
         echo "refused as it should be: $label"
     }
-    refused 'a canvodpy package name' -d dist_name=canvod-grids
-    refused 'an extensions package name' -d dist_name=canvod-filemap
-    refused 'a Python keyword as module' -d module_name=class
-    refused 'a taken canvod module' -d module_name=readers
-    refused 'a double quote in description' -d 'description=Reads "SBF" files.'
-    refused 'a backslash in author_name' -d 'author_name=J. R. R. Tolk\ien'
-    refused 'a double quote in affiliation' -d 'affiliation=The "Shire" College'
-    refused 'a family name not ending the name' -d author_family_name=Baggins
-    refused 'an @ in github_handle' -d github_handle=@jrrt
+    refused 'a canvodpy package name' dist_name -d dist_name=canvod-grids
+    refused 'an extensions package name' dist_name -d dist_name=canvod-filemap
+    refused 'a Python keyword as module' module_name -d module_name=class
+    refused 'a taken canvod module' module_name -d module_name=readers
+    refused 'a double quote in description' description -d 'description=Reads "SBF" files.'
+    refused 'a backslash in author_name' author_name -d 'author_name=J. R. R. Tolk\ien'
+    refused 'a double quote in affiliation' affiliation -d 'affiliation=The "Shire" College'
+    refused 'a family name not ending the name' author_family_name -d author_family_name=Baggins
+    refused 'an @ in github_handle' github_handle -d github_handle=@jrrt
 
 # ============================================================================
 # Release Management

@@ -175,8 +175,7 @@ affiliation:
   help: "Your affiliation, e.g. a research unit and university (empty: none)"
   default: ""
   validator: >-
-    [% if false %]
-    [% elif '"' in affiliation or '\\' in affiliation %]
+    [% if '"' in affiliation or '\\' in affiliation %]
     No double quotes or backslashes: the answer goes into TOML and YAML strings.
     [% endif %]
 
