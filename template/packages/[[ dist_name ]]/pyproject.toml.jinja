@@ -1,0 +1,47 @@
+[project]
+name = "[[ dist_name ]]"
+version = "0.1.0"
+description = "[[ description ]]"
+readme = "README.md"
+requires-python = ">=3.14"
+authors = [
+    {name = "[[ author_name ]]", email = "[[ author_email ]]"},
+]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+keywords = [
+    "GNSS",
+    "GNSS-T",
+    "VOD",
+    "remote sensing",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+]
+
+# Every dependency the package needs, with no extras. canvodpy packages
+# with a lower bound of a released version (.claude/skills/canvodpy-dependency).
+dependencies = [
+[% for dep in canvodpy_deps %]
+    "[[ dep ]]>=1.0.0,<2",
+[% endfor %]
+]
+
+[project.urls]
+Homepage = "[[ repo_url ]]"
+Documentation = "[[ docs_url ]]packages/[[ short_name ]]/overview/"
+Repository = "[[ repo_url ]]"
+Issues = "[[ repo_url ]]/issues"
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "canvod.[[ module_name ]]"

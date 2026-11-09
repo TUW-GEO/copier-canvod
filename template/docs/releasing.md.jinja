@@ -1,0 +1,96 @@
+---
+title: How a release works
+description: The release chain of [[ dist_name ]], from commit message to GitHub release
+---
+
+# How a release works
+
+This page documents the release chain of `[[ dist_name ]]`, from commit
+message to GitHub release. The steps to follow are in
+[Contributing](CONTRIBUTING.md#releasing). It is the chain of
+canvodpy-extensions, so the package keeps its history and tags when it
+moves there.
+
+A release here is a git tag and a GitHub release. **Nothing is published
+to PyPI or Zenodo from this repository**: the `canvod-*` names on PyPI and
+the canVODpy records on Zenodo belong to the canVODpy maintainers, who
+publish a package once it is part of canvodpy or canvodpy-extensions.
+
+---
+
+## 1. Conventional commits
+
+Commit messages follow `type(scope): subject`, for example
+`fix([[ short_name ]]): handle an empty input`. The commit-msg hook
+(installed by `just hooks`) runs commitizen's check and rejects other
+messages. The messages become the changelog, so mark breaking changes
+(`feat!:` or a `BREAKING CHANGE:` footer).
+
+---
+
+## 2. Versions, changelogs, and tags
+
+| Recipe | What it does |
+|--------|--------------|
+| `just versions` | Prints the version of the package |
+| `just changelog` | Prints the package's changes since its last release |
+| `just release [[ dist_name ]] 0.2.0` | Runs the package's tests, sets the version (`major`, `minor`, `patch`, or a version number), writes the package's `CHANGELOG.md`, and makes one release commit |
+| `just tag` | On an up-to-date `main`, tags the package's version and pushes the tag |
+
+**Changelog.** `packages/[[ dist_name ]]/CHANGELOG.md` is written by
+[git-cliff](https://git-cliff.org) (`cliff.toml`) from the commits that
+changed `packages/[[ dist_name ]]/`. `just release` adds the new section at
+the top and leaves the earlier sections as they are. Edit the new section
+in the release pull request where an entry is wrong or missing: the draft
+release takes its notes from it.
+
+**Tags.** A release is the tag `[[ dist_name ]]-v<version>`, for example
+`[[ dist_name ]]-v0.2.0`. `just release` refuses a version whose tag exists
+already. `just tag` refuses to tag unless `main` matches `origin/main` and
+the changelog has a section for the tag, so a tag always points at a
+merged release commit.
+
+---
+
+## 3. Draft releases
+
+`.github/workflows/release.yml` runs when a tag `canvod-*-v*` is pushed
+[% if not ci_enabled %](here: only by hand, `gh workflow run release.yml --ref <tag>`,
+since the workflows are off; see [Contributing](CONTRIBUTING.md#continuous-integration))[% endif %]:
+
+1. Reads the package and version from the tag and stops if the tag names no
+   package under `packages/` or doesn't match the package's version.
+2. Takes the release notes from the tag's section of the package's
+   `CHANGELOG.md`, and stops if there is none.
+3. Adds a link that opens the release notebook in molab, if the tagged
+   commit has `release-notes/<package>-v<version>.py`.
+4. Creates a **draft** release titled `<package> <version>` (a pre-release
+   for `a`, `b` and `rc` versions). Review it and publish it by hand.
+
+### Release notebooks
+
+A minor or major release gets a marimo notebook that shows what is new and
+how to use it: `release-notes/<package>-v<version>.py`, made from
+`release-notes/_template.py`. It pins the release it describes, has one
+section per change that users notice, and runs on canVODpy's demo data
+(`canvodpy.demo_data()`) where it can. CI checks its format only
+(`just check-release-notes`). Commit it on the release branch and add it
+to `release-notes/README.md`. A patch release needs no notebook.
+
+---
+
+## Complete example
+
+```bash
+git switch main && git pull origin main
+just changelog
+git switch -c chore/release-[[ dist_name ]]-0.2.0
+just release [[ dist_name ]] minor
+# commit release-notes/[[ dist_name ]]-v0.2.0.py here
+git push --no-follow-tags -u origin chore/release-[[ dist_name ]]-0.2.0
+gh pr create --fill
+# merged once CI passes, then on main:
+git switch main && git pull origin main
+just tag
+# draft release "[[ dist_name ]] 0.2.0" appears: review, publish
+```

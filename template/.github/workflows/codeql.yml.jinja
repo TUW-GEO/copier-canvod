@@ -1,0 +1,41 @@
+name: CodeQL Analysis
+
+on:
+[% if ci_enabled %]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly on Monday at 06:00 UTC
+[% else %]
+  # Off: ci_enabled is false in .copier-answers.yml, so this workflow runs
+  # only when started by hand (gh workflow run <file>). Private repositories
+  # pay for Actions minutes beyond a free monthly quota. Switch it on with
+  # `uvx copier update --trust --data ci_enabled=true`.
+[% endif %]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analyze:
+    name: Analyze Python
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # Required to upload SARIF results
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
+        with:
+          category: "/language:python"

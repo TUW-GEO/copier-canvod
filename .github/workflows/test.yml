@@ -1,0 +1,33 @@
+name: Template test
+
+# Generates a package with the workflows off and on, then runs its checks,
+# tests and docs build (just test).
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # Weekly: new tool releases can break a generated package
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # copier copies from the git history
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: '3.14'
+      - uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+        with:
+          tool: just
+      - name: Git identity for the generated repositories
+        run: |
+          git config --global user.name "template test"
+          git config --global user.email "test@example.org"
+      - run: just test

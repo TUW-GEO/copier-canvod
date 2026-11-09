@@ -1,0 +1,75 @@
+# Security Policy
+
+## Supported Versions
+
+Security fixes go into the latest 1.x release of each package. Releases
+before 1.0.0 get no fixes.
+
+| Version | Supported          |
+| ------- | ------------------ |
+| 1.x.x   | :white_check_mark: |
+| < 1.0.0 | :x:                |
+
+## Reporting a Vulnerability
+
+We take the security of [[ dist_name ]] seriously. If you discover a security
+vulnerability, please follow these steps:
+
+### 1. **Do Not** Open a Public Issue
+
+Please **do not** report security vulnerabilities through public GitHub issues,
+discussions, or pull requests.
+
+### 2. Report Privately
+
+Report security vulnerabilities via one of these methods:
+
+**Preferred:** Use GitHub's private vulnerability reporting:
+- Go to [[ repo_url ]]/security/advisories
+- Click "Report a vulnerability"
+- Fill in the details
+
+**Alternative:** Email the maintainer directly:
+- Email: [[ author_email ]]
+- Include "SECURITY" in the subject line
+- Provide a detailed description of the vulnerability
+
+### 3. What to Include
+
+Please include as much of the following information as possible:
+
+- Type of vulnerability
+- Full paths of source file(s) related to the vulnerability
+- Location of the affected source code (tag/branch/commit or direct URL)
+- Any special configuration required to reproduce the issue
+- Step-by-step instructions to reproduce the issue
+- Impact of the issue, including how an attacker might exploit it
+
+### 4. Response Timeline
+
+[[ dist_name ]] is a small project. We aim to
+respond and confirm reports as promptly as we can, and prioritize fixes by
+severity, but we do not guarantee specific response or fix timelines.
+
+## Security Best Practices for Users
+
+- Keep [[ dist_name ]] and its dependencies up to date
+- Monitor GitHub Dependabot alerts
+- **Never commit credentials** to version control
+- Validate configuration and data files loaded from untrusted sources
+
+## Dependency Chain
+
+[[ dist_name ]] is built against [canvodpy](https://github.com/TUW-GEO/canvodpy)
+and its dependency chain (NumPy, Pydantic, xarray, Zarr, etc.). Vulnerabilities in
+that chain may affect these packages; we monitor and update dependencies regularly.
+
+## Contact
+
+For security-related questions or concerns:
+- **Maintainer:** Nicolas François Bader
+- **Email:** [[ author_email ]]
+- **Affiliation:** Climate and Environmental Remote Sensing (CLIMERS), TU Wien
+
+For general (non-security) questions, use GitHub Issues:
+[[ repo_url ]]/issues

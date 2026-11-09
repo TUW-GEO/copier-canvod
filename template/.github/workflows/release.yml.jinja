@@ -1,0 +1,116 @@
+# GitHub Release Workflow
+# Drafts a GitHub Release when a package tag <package>-v<version> is pushed
+# (e.g. [[ dist_name ]]-v0.2.0, [[ dist_name ]]-v0.3.0rc1).
+# https://docs.github.com/en/actions/using-workflows
+
+name: Release
+
+on:
+[% if ci_enabled %]
+  push:
+    tags:
+      - "canvod-*-v*"
+[% else %]
+  # Off: ci_enabled is false in .copier-answers.yml, so this workflow runs
+  # only when started by hand (gh workflow run <file>). Private repositories
+  # pay for Actions minutes beyond a free monthly quota. Switch it on with
+  # `uvx copier update --trust --data ci_enabled=true`.
+[% endif %]
+  workflow_dispatch: # by hand on the tag: gh workflow run release.yml --ref <package>-v<version>
+
+permissions: read-all
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create releases
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Read the package and version from the tag
+        id: tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          pkg="${TAG%-v*}"
+          version="${TAG##*-v}"
+          if [ ! -d "packages/${pkg}" ]; then
+            echo "::error::Tag ${TAG} names no package under packages/"
+            exit 1
+          fi
+          declared=$(uv version --package "${pkg}" --short --frozen)
+          if [ "${declared}" != "${version}" ]; then
+            echo "::error::Tag ${TAG} does not match packages/${pkg} version ${declared}"
+            exit 1
+          fi
+          echo "package=${pkg}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Take the release notes from the package's CHANGELOG.md
+        env:
+          PKG: ${{ steps.tag.outputs.package }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # The section `just release` wrote and the release PR edited
+          awk -v tag="${TAG}" '
+            index($0, "## [" tag "]") == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' "packages/${PKG}/CHANGELOG.md" > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::packages/${PKG}/CHANGELOG.md has no section for ${TAG}"
+            exit 1
+          fi
+          cat release-notes.md
+
+      - name: Link the release notebook
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Minor and major releases have one (docs/releasing.md); a patch
+          # release usually not, and then the notes get no link.
+          notebook="release-notes/${TAG}.py"
+          if [ -f "${notebook}" ]; then
+            { echo; echo "**What is new, and how to use it:** [open the release notebook in molab](https://molab.marimo.io/github/[[ github_owner ]]/[[ repo_name ]]/blob/main/${notebook})"; } >> release-notes.md
+          else
+            echo "No release notebook ${notebook}: the notes get no link."
+          fi
+
+      - name: Create GitHub release (draft)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PKG: ${{ steps.tag.outputs.package }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          # PEP 440 pre-releases: 0.2.0a1, 0.2.0b1, 0.2.0rc1
+          if echo "${VERSION}" | grep -qE '(a|b|rc)[0-9]+$'; then
+            PRERELEASE="--prerelease"
+          else
+            PRERELEASE=""
+          fi
+          gh release create "${TAG}" \
+            --repo "${{ github.repository }}" \
+            --title "${PKG} ${VERSION}" \
+            --notes-file release-notes.md \
+            --draft \
+            ${PRERELEASE} \
+            --verify-tag
+
+      - name: Summary
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          echo "Draft release created: ${TAG}"
+          echo "Review at: https://github.com/${{ github.repository }}/releases"
+          echo "Publish the release manually when ready"

@@ -1,0 +1,91 @@
+name: Python Code Quality
+
+on:
+    workflow_call: # from ci.yml, its only trigger
+        inputs:
+            docs_only:
+                # True skips the type check.
+                type: boolean
+                default: false
+
+permissions: read-all
+
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+    lock_file:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: ./.github/actions/setup
+            - name: Install just
+              uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+              with:
+                  tool: just
+            - name: Check uv.lock is up to date
+              if: github.actor != 'dependabot[bot]'
+              run: just check-lock
+
+    linting:
+        runs-on: ubuntu-latest
+        needs: [lock_file]
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: ./.github/actions/setup
+            - name: Install just
+              uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+              with:
+                  tool: just
+            - name: Lint with ruff
+              run: just check-lint-only
+            - name: Check the format of the release notebooks
+              run: just check-release-notes
+
+    formatting:
+        runs-on: ubuntu-latest
+        needs: [lock_file]
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: ./.github/actions/setup
+            - name: Install just
+              uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+              with:
+                  tool: just
+            - name: Check formatting
+              run: just check-format-only
+
+    type_consistency:
+        if: ${{ !inputs.docs_only }}
+        runs-on: ubuntu-latest
+        needs: [lock_file]
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: ./.github/actions/setup
+            - name: Install just
+              uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+              with:
+                  tool: just
+            - name: Type check with ty
+              run: just check-types
+
+    agent_docs:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: ./.github/actions/setup
+            - name: Install just
+              uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+              with:
+                  tool: just
+            - name: Check out canvodpy, to check the canvodpy paths too
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  repository: TUW-GEO/canvodpy
+                  path: canvodpy-checkout
+                  fetch-depth: 0 # the locked commit may be on any branch
+                  persist-credentials: false
+            - name: Check paths and recipes named in AGENTS.md and skills
+              env:
+                  CANVODPY_REPO: canvodpy-checkout
+              run: just check-agent-docs

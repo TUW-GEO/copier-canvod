@@ -1,0 +1,200 @@
+# [[ dist_name ]]: instructions for coding agents
+
+[[ description ]] A package for [canvodpy](https://github.com/TUW-GEO/canvodpy).
+canvodpy computes vegetation optical depth (VOD) from GNSS signals: a
+receiver below a canopy and a reference receiver with open sky
+(GNSS-Transmissometry, GNSS-T). Its users are scientists.
+
+This repository is canvodpy-extensions reduced to one package, so the
+package can move there unchanged (`MOVING.md`). Keep it that way: the same
+layout, recipes, hooks and rules. Releases are git tags and GitHub
+releases only; nothing is published to PyPI or Zenodo from here.
+
+`CLAUDE.md` files only import this file; edit `AGENTS.md`. The package
+has its own `AGENTS.md` (`packages/[[ dist_name ]]/AGENTS.md`): read it
+before changing the package.
+
+## Scientific context
+
+canvodpy's root `AGENTS.md` (`canvodpy:AGENTS.md`, "Scientific context")
+explains GNSS-T, VOD and the words the code uses (SNR, signal ID, polar
+angle, epoch, hemisphere grid). Read it before changing how this package
+converts or computes data; the words are those of canvodpy's glossary
+(`canvodpy:GLOSSARY.md`).
+
+## Package
+
+| Package | Import | Role | Read first |
+|---|---|---|---|
+| [[ dist_name ]] | `canvod.[[ module_name ]]` | [[ description ]] | `packages/[[ dist_name ]]/AGENTS.md` |
+
+The package has its own `pyproject.toml`, version, changelog, tests and
+docs page (`docs/packages/[[ short_name ]]/overview.md`). The `.venv` is at
+the root (uv workspace). `canvod` is a namespace package shared with
+canvodpy: the `canvod` folder under `src` has no init module.
+
+## Task guides
+
+Step-by-step guides for recurring tasks. Claude Code loads them as skills;
+other agents read the files directly.
+
+| Task | Guide |
+|---|---|
+| Release the package | `.claude/skills/release-package/SKILL.md` |
+| Change what the package needs from canvodpy (sources, bounds, relock) | `.claude/skills/canvodpy-dependency/SKILL.md` |
+| Deprecate code | canvodpy's guide, `canvodpy:.claude/skills/deprecate/SKILL.md` |
+
+## Development workflow
+
+Work on a branch, never on `main`; every change reaches `main` through a
+pull request. An agent may push its branch and open the pull request, but
+never merges, never pushes `main` or tags, never force-pushes and never
+bypasses a check (`CODING_STANDARDS.md`, Git and GitHub; enforced for
+Claude Code by `scripts/agent_git_guard.py`). Read `CODING_STANDARDS.md`
+before writing code: its rules and its checklist apply to every change,
+and `/mattpocock-skills:code-review` checks against them. Read the
+`AGENTS.md` of every package you change, the task guide if one fits, and
+the canvodpy side of the change (below).
+
+Changes go through the agent workflow canvodpy uses (the
+mattpocock-skills plugin, `just agent-skills`;
+`canvodpy:docs/guides/ai-development.md`). Claude Code calls plugin
+skills only by their full name:
+
+| Situation | Start with |
+|---|---|
+| An idea or a change to design | `/mattpocock-skills:grill-with-docs`: interview until every decision is settled; records terms and decisions (`docs/agents/domain.md` says where) |
+| A change too big for one session | `/mattpocock-skills:to-spec`, then `/mattpocock-skills:to-tickets` (GitHub issues), then `/mattpocock-skills:implement` per ticket |
+| A change that fits one session | `/mattpocock-skills:implement` (test first with `/mattpocock-skills:tdd`, then `/mattpocock-skills:code-review`) |
+| Something is broken | `/mattpocock-skills:diagnosing-bugs`: a command that shows the bug before any theory |
+| Not sure | `/mattpocock-skills:ask-matt` |
+
+Releasing is a separate step after merging: see the `release-package`
+guide. Running on real data or writing to a production store needs the
+maintainers' go-ahead first.
+
+## Commands
+
+```bash
+just sync                             # the package, one .venv, git hooks
+just agent-skills                     # the agent workflow plugin (Claude Code)
+just check                            # ruff lint + format, ty, agent docs
+just test                             # all tests
+just docs                             # preview the docs site
+just versions                         # version of the package
+just canvodpy-ref                     # canvodpy code this workspace is locked at
+just lock-canvodpy                    # relock at the current tip of the canvodpy branch
+```
+
+Pre-commit runs ruff, `uv lock`, whitespace checks and the agent docs
+check; commitizen checks the commit message; the pre-push hook runs ty.
+CI (`.github/workflows/ci.yml`) runs `just check-lock`,
+`just check-lint-only`, `just check-format-only`, `just check-types`, the
+agent docs check, the docs checks and the tests on Linux, macOS and
+Windows, and sums them up in one check, `ci-ok`. A pull request that
+changes only docs (`tools/ci_changes.py`) skips ty and the tests.
+[% if not ci_enabled %]The workflows are off here (`ci_enabled: false` in `.copier-answers.yml`):
+they run only when started by hand, so run `just check` and `just test`
+before every pull request.
+[% endif %]
+
+## Rules
+
+The rules every change follows (free tools only, explicit over implicit,
+canvodpy owns the contracts, one implementation per job, composition over
+inheritance, deprecate don't delete, write for scientists) are in
+`CODING_STANDARDS.md`. They are canvodpy's rules; the reasons are in
+canvodpy's decisions (`canvodpy:docs/adr/index.md`).
+
+## Dependency on canvodpy
+
+The package imports canvodpy packages ([[ canvodpy_deps | join(', ') ]]). Root `[tool.uv.sources]` decides
+where they come from: a canvodpy branch while the code the package needs
+is unreleased, PyPI otherwise. Read the `canvodpy-dependency` guide before
+touching those sources or relocking.
+
+## canvodpy: read it before changing the package
+
+The package builds on canvodpy: its datasets, grids, stores or settings.
+It is only right if it matches what canvodpy does, so read the canvodpy
+side first, every time.
+
+**1. Find the canvodpy code this workspace uses.**
+
+```bash
+just canvodpy-ref
+```
+
+It lists every canvodpy package with its locked version and the source
+tree: a commit of a canvodpy branch, or a release tag for packages from
+PyPI. They can differ per package. Read canvodpy there, not on its `main`
+and not in whatever branch a local checkout is on: with a checkout,
+`git -C <canvodpy checkout> show <ref>:<path>`; without one, the GitHub
+link printed by the recipe. If the package needs canvodpy code newer
+than that, see the `canvodpy-dependency` guide.
+
+**2. Follow canvodpy's own trail.** canvodpy's agent instructions are its
+`AGENTS.md` files:
+
+- `canvodpy:AGENTS.md`, the root. Read at least "Scientific context",
+  "Project architecture", "Guardrails" and "Key documentation" (its
+  breadcrumb trail, canvodpy's docs in reading order).
+- The `AGENTS.md` of each canvodpy package this package imports
+  (`canvodpy:packages/<name>/AGENTS.md`, or `canvodpy:canvodpy/AGENTS.md`
+  for canvodpy itself).
+- `canvodpy:docs/guides/extensions.md`: how canvodpy installs and uses the
+  extensions, and what happens when one is missing.
+
+**3. Check canvodpy's side of a change.** Before renaming or changing
+anything public here, search the canvodpy repository for it
+(`git -C <canvodpy checkout> grep -n <name>`) and plan the canvodpy change
+too.
+
+### canvodpy facts used throughout
+
+The code is the truth; don't copy these constants into new code.
+
+- canVOD file name (canvod-preflight, `canvod.preflight.convention`):
+  `{SIT}{T}{NN}{AGC}_R_{YYYY}{DOY}{HHMM}_{PERIOD}_{SAMPLING}_{CONTENT}.{TYPE}`,
+  e.g. `FANA01INK_R_20250010000_15M_05S_AA.rnx`. canvodpy finds files by
+  this name, or through a naming recipe.
+- Observation datasets: dims `(epoch, sid)`, sid `"{sv}|{band}|{code}"`
+  (e.g. `G01|L1|C`); checked by `canvod.readers.validate_dataset`. VOD
+  datasets: `VOD`, `theta`, `phi` (radians) on `(epoch, sid)`; checked by
+  `canvod.readers.validate_vod_dataset`.
+- Processing: `canvodpy run --site ... --start ... --end ...`, one day at a
+  time, results in Icechunk stores. A store must exist, with its
+  repository metadata, before data is written to it.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues of [[ github_owner ]]/[[ repo_name ]]
+(`gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage labels (`needs-triage`, `needs-info`,
+`ready-for-agent`, `ready-for-human`, `wontfix`). See
+`docs/agents/triage-labels.md`.
+
+### Domain docs
+
+canvodpy's glossary and decisions, plus this repository's own decisions.
+See `docs/agents/domain.md`.
+
+## Keeping these files useful
+
+- Write what an agent cannot see quickly in the code: decisions, invariants,
+  traps, where things live. Don't list functions or restate docstrings;
+  point at the file that holds the truth.
+- Name the `just` recipe whenever one does the job, not the raw command
+  behind it. If no recipe fits a recurring task, add one rather than
+  documenting a command.
+- Every path and `just` recipe named in `AGENTS.md` and the guides must
+  exist: `just check-agent-docs` verifies this (pre-commit and CI).
+- Write paths in the canvodpy repository as `canvodpy:<path>`; they are
+  checked at the locked canvodpy commit when a canvodpy checkout is next to
+  this repository (or at `$CANVODPY_REPO`), and always in CI.
+- When a change makes a statement here wrong, fix it in the same PR.

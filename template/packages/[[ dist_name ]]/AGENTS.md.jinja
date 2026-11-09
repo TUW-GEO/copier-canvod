@@ -1,0 +1,28 @@
+# [[ dist_name ]]
+
+[[ description ]]
+
+Before changing it, read the canvodpy side: root `AGENTS.md`, section
+"canvodpy: read it before changing the package".
+
+## Where things live
+
+- `src/canvod/[[ module_name ]]/__init__.py`: the public names, and
+  `__version__` from the package metadata.
+
+<!-- One line per module: what it holds, which canvodpy code it builds on.
+Point at files; don't restate docstrings. -->
+
+## Invariants
+
+<!-- What must stay true: contracts it checks against (canvodpy's), units,
+angles, time scales. -->
+
+## Traps
+
+<!-- What has bitten someone before. -->
+
+## Tests
+
+`just test-package [[ dist_name ]]`. Test data and people are the made-up
+ones of canvodpy's `canvod.utils.testing`.

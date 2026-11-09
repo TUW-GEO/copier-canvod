@@ -1,0 +1,102 @@
+# ============================================================================
+# Workspace Configuration — [[ repo_name ]]
+# ============================================================================
+# [[ dist_name ]]: [[ description ]]
+#
+# Built like canvodpy-extensions (https://github.com/TUW-GEO/canvodpy-extensions),
+# reduced to one package: packages/[[ dist_name ]]/ moves into a canvodpy
+# monorepo unchanged (MOVING.md). Generated with copier-canvod; take its
+# later changes with `uvx copier update --trust`.
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv]
+# uv lock takes only package files at least a week on PyPI, so a broken or
+# malicious release is usually withdrawn before it reaches uv.lock.
+exclude-newer = "1 week"
+# The packages released from canvodpy are taken right away
+# (.claude/skills/canvodpy-dependency).
+exclude-newer-package = { canvodpy = false, canvod-auxiliary = false, canvod-config = false, canvod-grids = false, canvod-ops = false, canvod-preflight = false, canvod-readers = false, canvod-store = false, canvod-store-metadata = false, canvod-utils = false, canvod-viz = false, canvod-vod = false }
+
+# ============================================================================
+# Development Dependencies (Workspace-wide)
+# ============================================================================
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.19.3",
+    "mkdocstrings-python>=2.0.10",
+    "pre-commit>=4.7.0",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "pyyaml>=6.0",
+    "ruff>=0.17.3",
+    "ty>=0.0.95",
+    "zensical>=0.0.73",
+]
+
+# ============================================================================
+# Ruff Configuration
+# ============================================================================
+
+[tool.ruff]
+line-length = 99
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004"]
+"release-notes/*.py" = ["B018", "F811", "F821", "F401", "E402"]  # marimo notebooks: bare display expressions, cross-cell names
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ============================================================================
+# Pytest Configuration
+# ============================================================================
+
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/[[ dist_name ]]/tests",
+    "tools/tests",
+]
+addopts = "--cov --cov-report term-missing --cov-report lcov -rsx --verbose --color=yes"
+markers = [
+    "integration: marks tests as integration tests (may require config files or external resources)",
+]
+
+[tool.coverage.run]
+relative_files = true
+source = [
+    "packages/[[ dist_name ]]/src",
+]
+
+# ============================================================================
+# ty Configuration (Type Checking)
+# ============================================================================
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.src]
+# Release notebooks are marimo scripts with their own dependencies (PEP 723
+# header); `just check-release-notes` checks them.
+exclude = ["release-notes/"]
+
+[tool.ty.rules]
+# Ignore unresolved imports: workspace packages may not all be installed
+# in isolation.
+unresolved-import = "ignore"
+
+# ============================================================================
+# Commitizen Configuration (Conventional Commits)
+# ============================================================================
+
+# Checks commit messages only (commit-msg hook). Versions, changelogs and tags
+# are per package: see "Release Management" in the Justfile.
+[tool.commitizen]
+name = "cz_conventional_commits"

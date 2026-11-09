@@ -1,0 +1,8 @@
+from importlib.metadata import version
+
+import canvod.[[ module_name ]]
+
+
+def test_version_is_the_installed_package_version() -> None:
+    # A version written into the code goes stale at the next release
+    assert canvod.[[ module_name ]].__version__ == version("[[ dist_name ]]")

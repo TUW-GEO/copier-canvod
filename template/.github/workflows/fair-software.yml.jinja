@@ -1,0 +1,30 @@
+name: FAIR Software Check
+
+on:
+[% if ci_enabled %]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+[% else %]
+  # Off: ci_enabled is false in .copier-answers.yml, so this workflow runs
+  # only when started by hand (gh workflow run <file>). Private repositories
+  # pay for Actions minutes beyond a free monthly quota. Switch it on with
+  # `uvx copier update --trust --data ci_enabled=true`.
+[% endif %]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  verify:
+    name: "Check FAIR software compliance"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: fair-software/howfairis-github-action@4c11146488125aa6e1531184eed51d781bcd5871  # main
+        name: Measure compliance with fair-software.eu recommendations
+        env:
+          PYCHARM_HOSTED: "Trick colorama into displaying colored output"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          MY_REPO_URL: "https://github.com/${{ github.repository }}"

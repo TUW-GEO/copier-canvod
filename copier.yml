@@ -1,0 +1,197 @@
+# ============================================================================
+# copier-canvod: a new canvod-* package, built like a canvodpy-extensions
+# package, in a repository of its own.
+#
+#   uvx copier copy --trust gh:TUW-GEO/copier-canvod canvod-<name>
+#   uvx copier update --trust          # later: take the template's changes
+#
+# The generated repository is canvodpy-extensions reduced to one package
+# under packages/: same workspace, hooks, just recipes, CI, docs site and
+# agent files. Moving the package into canvodpy-extensions later means
+# copying packages/<dist_name>/ and its docs pages (MOVING.md).
+# ============================================================================
+
+_min_copier_version: "9.5.0"
+_subdirectory: template
+_templates_suffix: .jinja
+_answers_file: .copier-answers.yml
+
+# Jinja delimiters that clash with nothing in the generated files: GitHub
+# Actions (${{ }}), just ({{ }}) and git-cliff (Tera, {{ }} {% %}) keep
+# theirs.
+_envops:
+  block_start_string: "[%"
+  block_end_string: "%]"
+  variable_start_string: "[["
+  variable_end_string: "]]"
+  comment_start_string: "[#"
+  comment_end_string: "#]"
+  keep_trailing_newline: true
+  trim_blocks: true
+  lstrip_blocks: true
+
+# After generation: lock and install the workspace, install the git hooks,
+# and make the first commit, so the hooks and copier update have a base.
+_tasks:
+  - command: git init --initial-branch=main --quiet
+    when: "[[ _copier_operation == 'copy' ]]"
+  - command: uv lock --quiet
+  - command: git add --all
+    when: "[[ _copier_operation == 'copy' ]]"
+
+# ----------------------------------------------------------------------------
+# The package
+# ----------------------------------------------------------------------------
+
+dist_name:
+  type: str
+  help: "Distribution name: canvod-<name>, lower case, words joined by hyphens (e.g. canvod-science-viz)"
+  validator: >-
+    [% if not (dist_name | regex_search('^canvod-[a-z][a-z0-9]*(-[a-z0-9]+)*$')) %]
+    Must look like canvod-<name>: lower case letters and digits, words joined by single hyphens.
+    [% endif %]
+
+short_name:
+  type: str
+  help: "Short name: scope of commits, docs folder (docs/packages/<short_name>/)"
+  default: "[[ dist_name | replace('canvod-', '', 1) ]]"
+  validator: >-
+    [% if not (short_name | regex_search('^[a-z][a-z0-9]*(-[a-z0-9]+)*$')) %]
+    Lower case letters and digits, words joined by single hyphens.
+    [% endif %]
+
+module_name:
+  type: str
+  help: "Import name below canvod: import canvod.<module_name>"
+  default: "[[ short_name | replace('-', '_') ]]"
+  validator: >-
+    [% if not (module_name | regex_search('^[a-z][a-z0-9_]*$')) %]
+    A Python identifier: lower case letters, digits and underscores.
+    [% endif %]
+
+description:
+  type: str
+  help: "One sentence: what the package does (pyproject.toml, README, docs)"
+  validator: "[% if not description %]Required.[% endif %]"
+
+target:
+  type: str
+  help: "Where the package should end up"
+  choices:
+    "canvodpy-extensions (an optional slot-in)": extensions
+    "canvodpy itself (a core package)": canvodpy
+    "Stays on its own": standalone
+  default: extensions
+
+canvodpy_deps:
+  type: str
+  help: "canvodpy packages it imports (space: select). Each gets the bound >=1.0.0,<2 in pyproject.toml; raise it to the release you need."
+  multiselect: true
+  choices:
+    - canvodpy
+    - canvod-auxiliary
+    - canvod-config
+    - canvod-grids
+    - canvod-ops
+    - canvod-preflight
+    - canvod-readers
+    - canvod-store
+    - canvod-store-metadata
+    - canvod-utils
+    - canvod-viz
+    - canvod-vod
+  default: [canvod-utils]
+  validator: >-
+    [% if not canvodpy_deps %]
+    Choose at least one: a canvod package builds on canvodpy, and the agent
+    docs check reads canvodpy at the release it is locked at.
+    [% endif %]
+
+# ----------------------------------------------------------------------------
+# Repository and people
+# ----------------------------------------------------------------------------
+
+github_owner:
+  type: str
+  help: "GitHub user or organisation that owns the repository"
+  validator: "[% if not github_owner %]Required.[% endif %]"
+
+repo_name:
+  type: str
+  help: "Repository name on GitHub"
+  default: "[[ dist_name ]]"
+
+author_name:
+  type: str
+  help: "Your name (pyproject.toml, LICENSE notice, CITATION.cff)"
+  validator: "[% if not author_name %]Required.[% endif %]"
+
+author_email:
+  type: str
+  help: "Your e-mail address (pyproject.toml, SECURITY.md)"
+  validator: >-
+    [% if not (author_email | regex_search('^[^@\s]+@[^@\s]+\.[^@\s]+$')) %]
+    Not an e-mail address.
+    [% endif %]
+
+author_orcid:
+  type: str
+  help: "Your ORCID iD, e.g. 0000-0002-1825-0097 (empty: none)"
+  default: ""
+  validator: >-
+    [% if author_orcid and not (author_orcid | regex_search('^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$')) %]
+    An ORCID iD looks like 0000-0002-1825-0097.
+    [% endif %]
+
+affiliation:
+  type: str
+  help: "Your affiliation, e.g. a research unit and university (empty: none)"
+  default: ""
+
+github_handle:
+  type: str
+  help: "Your GitHub user name: code owner of every file"
+  default: "[[ github_owner ]]"
+
+copyright_year:
+  type: int
+  help: "First year of the copyright notice, e.g. 2026"
+
+# ----------------------------------------------------------------------------
+# Switches
+# ----------------------------------------------------------------------------
+
+ci_enabled:
+  type: bool
+  help: >-
+    Run the GitHub Actions workflows automatically (pull requests, pushes,
+    weekly)? Off: every workflow is still there, but runs only when started
+    by hand. Private repositories pay for Actions minutes beyond a free
+    monthly quota; public ones don't. Switch it later with
+    `uvx copier update --trust --data ci_enabled=true`.
+  default: false
+
+docs_domain:
+  type: str
+  help: "Custom domain of the docs site on GitHub Pages (empty: <owner>.github.io/<repo>)"
+  default: ""
+
+impressum_url:
+  type: str
+  help: "Link to your legal notice (Impressum) in the docs footer (empty: none)"
+  default: ""
+
+# ----------------------------------------------------------------------------
+# Derived values, never asked
+# ----------------------------------------------------------------------------
+
+repo_url:
+  type: str
+  default: "https://github.com/[[ github_owner ]]/[[ repo_name ]]"
+  when: false
+
+docs_url:
+  type: str
+  default: >-
+    [% if docs_domain %]https://[[ docs_domain ]]/[% else %]https://[[ github_owner | lower ]].github.io/[[ repo_name ]]/[% endif %]
+  when: false

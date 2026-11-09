@@ -1,0 +1,198 @@
+# Contributing
+
+Contributions are welcome. This guide covers the development setup and contribution workflow.
+
+## Required tools
+
+Two external tools must be installed separately (not managed by `uv sync`):
+
+### The `uv` package manager
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or via package manager
+brew install uv
+```
+
+[uv documentation](https://docs.astral.sh/uv/)
+
+### The `just` command runner
+
+```bash
+# macOS/Linux
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash
+
+# Or via package manager
+brew install just
+```
+
+[just documentation](https://github.com/casey/just)
+
+## Ways to contribute
+
+### Report bugs
+
+Report bugs at [[ repo_url ]]/issues with the
+bug report form. It asks for the version, the steps to
+reproduce, the error output, and the output of `canvodpy doctor`. Feature
+requests have their own form.
+
+### Fix bugs and implement features
+
+Issues tagged "bug"/"enhancement" and "help wanted" are open for contributions.
+
+## Development workflow
+
+1. Install required tools (uv and just).
+
+2. Fork and clone the repository:
+   ```bash
+   git clone [[ repo_url ]].git
+   cd [[ repo_name ]]
+   ```
+
+3. Install dependencies:
+   ```bash
+   just sync      # uv sync, plus the pre-commit, commit-msg and pre-push hooks
+   ```
+
+4. Create a feature branch:
+   ```bash
+   git checkout -b name-of-your-bugfix-or-feature
+   ```
+
+5. Make changes and verify:
+   ```bash
+   just test
+   just check
+   ```
+
+6. Commit using conventional commits:
+   ```bash
+   git commit -m "feat([[ short_name ]]): add <what>"
+   ```
+
+7. Push and create a pull request:
+   ```bash
+   git push --no-follow-tags origin name-of-your-bugfix-or-feature
+   ```
+   A maintainer reviews and merges it. Coding agents may push the feature
+   branch and open the pull request, but never merge, push `main` or tags,
+   or bypass a check (`AGENTS.md`, Git and GitHub).
+
+### Commit message format
+
+```
+<type>(<scope>): <subject>
+```
+
+**Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `ci`
+
+**Scopes:** `[[ short_name ]]`, `deps`, `ci`, `docs`, `release`
+
+**Examples:**
+```bash
+git commit -m "feat([[ short_name ]]): add <what>"
+git commit -m "fix([[ short_name ]]): handle <case>"
+git commit -m "docs: update installation instructions"
+```
+
+See [Conventional Commits](https://www.conventionalcommits.org/) for the full specification.
+
+## Common commands
+
+```bash
+just --list                    # Show all commands
+just test                      # Run all tests
+just test-coverage             # With coverage report
+just check                     # Lint + format + type-check
+```
+
+## Coding agents
+
+`AGENTS.md` (root and per package) holds the instructions for coding
+agents; the `CLAUDE.md` files import it. Task guides for agents are in
+`.claude/skills/`. Keep them correct when you change what they describe;
+`just check-agent-docs` checks that the paths and recipes they name exist.
+
+## Pull request guidelines
+
+A new pull request starts from the template in
+`.github/pull_request_template.md`: summary, evidence, merge danger, and a
+checklist.
+
+1. Include tests for new features. New code must not reduce test coverage.
+2. Update the package's `README.md` and the Zensical documentation in `docs/` if
+   adding or changing public API or behavior.
+3. Ensure compatibility with Python 3.14+.
+
+## Licensing
+
+[[ dist_name ]] is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+By submitting a pull request, you agree that your contribution is licensed under
+the same terms. The `LICENSE` and `NOTICE` files at the repository root apply to
+all source files. Per-file license headers are not required.
+
+## Code quality
+
+- **ruff** for linting and formatting
+- **ty** for type checking
+- **pytest** for testing with coverage
+
+Run `just check` before committing.
+
+## Continuous integration
+
+[% if not ci_enabled %]
+**The workflows are off in this repository**: they run only when started
+by hand (`gh workflow run ci.yml`), since private repositories pay for
+GitHub Actions minutes beyond a free monthly quota. Run `just check` and
+`just test` locally before every pull request. Switch them on with
+`uvx copier update --trust --data ci_enabled=true`.
+
+[% endif %]
+Every pull request and every push to `main` runs one workflow on GitHub
+Actions, **CI**, which sums up its checks in one check, `ci-ok`. A pull
+request that changes only docs skips the type check and the platform
+tests (`tools/ci_changes.py` says which files are docs). CI runs:
+
+- **Python Code Quality:** checks that `uv.lock` is up to date, runs ruff
+  (lint and format) and ty (types), and checks the paths named in
+  `AGENTS.md` files and skills.
+- **Platform Tests:** the test suite on Linux, Windows, and macOS. The Linux
+  job uploads the coverage to Coveralls and posts it as a comment on the
+  pull request.
+- **Docs Quality:** a language check (Vale) of the changed pages, and a
+  link check (lychee) of the built site. Pull requests check the links
+  between our pages only; the weekly run also checks the external links
+  and opens an issue when one fails.
+
+## Releasing
+
+Releases are cut by a maintainer, never by a coding agent. A release is the
+git tag `[[ dist_name ]]-v<version>` on `main` and a GitHub release; nothing
+is published to PyPI or Zenodo from this repository
+([How a release works](releasing.md)).
+
+```bash
+just versions                                     # current version
+just changelog                                    # changes since the last release
+git checkout -b chore/release-[[ dist_name ]]-0.2.0
+just release [[ dist_name ]] minor                # or major, patch, or e.g. 0.2.0
+git push --no-follow-tags -u origin chore/release-[[ dist_name ]]-0.2.0
+gh pr create --fill
+# once merged:
+git checkout main && git pull
+just tag                                          # tags main and pushes the tag
+```
+
+`just release` runs the package's tests and makes one commit that sets the
+version in `packages/[[ dist_name ]]/pyproject.toml` (and `uv.lock`) and
+writes `packages/[[ dist_name ]]/CHANGELOG.md` from the commits
+([git-cliff](https://git-cliff.org), `cliff.toml`). A minor or major release
+also gets a release notebook, `release-notes/[[ dist_name ]]-v<version>.py`,
+copied from `release-notes/_template.py` and committed on the release
+branch. Pushing the tag drafts a GitHub release from the changelog
+(`release.yml`); publish it by hand.

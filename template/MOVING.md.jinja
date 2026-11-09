@@ -1,0 +1,46 @@
+# Moving [[ dist_name ]] into a canvodpy monorepo
+
+This repository is canvodpy-extensions reduced to one package, so the
+package moves without changes. The canVODpy maintainers decide whether it
+moves; open an issue in the target repository first.
+
+## What moves, what stays
+
+| Moves | Stays here (the target has its own) |
+|---|---|
+| `packages/[[ dist_name ]]/` (code, tests, `pyproject.toml`, `README.md`, `AGENTS.md`, `CHANGELOG.md`) | `.github/`, `tools/`, `scripts/`, `.claude/settings.json`, hooks, root `pyproject.toml`, `Justfile`, `uv.lock` |
+| `docs/packages/[[ short_name ]]/`, `docs/api/[[ dist_name ]].md` | `docs/index.md`, `docs/releasing.md`, `docs/agents/`, `zensical.toml` |
+| `release-notes/[[ dist_name ]]-v*.py` | `release-notes/_template.py`, `README.md` |
+
+## Into canvodpy-extensions
+
+Keep the history of the package folder with `git subtree`:
+
+```bash
+cd canvodpy-extensions
+git switch -c feat/[[ short_name ]]
+git subtree add --prefix=packages/[[ dist_name ]] [[ repo_url ]].git <branch-of-a-split>
+```
+
+where the split branch is made here first:
+
+```bash
+git subtree split --prefix=packages/[[ dist_name ]] -b split-[[ short_name ]]
+git push --no-follow-tags origin split-[[ short_name ]]
+```
+
+Then follow the extensions' own guide for a new package,
+`.claude/skills/add-package/SKILL.md` there ("Register it"): root
+`pyproject.toml` test paths and coverage, `zensical.toml` nav, the docs
+pages, the package tables in `README.md` and `AGENTS.md`, the commit
+scope in `CONTRIBUTING.md`. Change the project URLs in
+`packages/[[ dist_name ]]/pyproject.toml` to canvodpy-extensions. The tags
+`[[ dist_name ]]-v*` keep their names there.
+
+## Into canvodpy
+
+Same steps into canvodpy's `packages/`, then canvodpy's own checklist
+(its root `AGENTS.md`). canvodpy's packages share its workspace, version
+bounds `<2`, the umbrella `canvodpy` pin and its API levels: a package
+there may need changes to canvodpy's API and CLI. Plan that with the
+maintainers first.

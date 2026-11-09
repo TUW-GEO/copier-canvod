@@ -1,0 +1,63 @@
+repos:
+  - repo: local
+    hooks:
+      # Use uv-managed ruff so local hooks and CI always use the same version
+      - id: ruff-check
+        name: ruff lint
+        # --locked: never write uv.lock, and fail loudly when it is out of
+        # date ("run `uv lock`"). A plain `uv run` would rewrite it as a side
+        # effect, and pre-commit would abort with uv.lock "modified by this
+        # hook"; --frozen would lint silently with a stale lock.
+        entry: uv run --locked ruff check --fix
+        language: system
+        types: [python]
+        stages: [pre-commit]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --locked ruff format
+        language: system
+        types: [python]
+        stages: [pre-commit]
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.13.6
+    hooks:
+      # Update the uv lockfile
+      - id: uv-lock
+        stages: [pre-commit]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit]
+      - id: check-added-large-files
+        stages: [pre-commit]
+      - id: detect-private-key
+        stages: [pre-commit]
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.19.3
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  - repo: local
+    hooks:
+      # Paths and just recipes named in AGENTS.md files and skills must exist;
+      # runs on every commit, since renaming code can break them too
+      - id: check-agent-docs
+        name: agent docs
+        entry: uv run --no-sync python tools/check_agent_docs.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: ty-check
+        name: ty type check
+        entry: uv run --locked ty check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

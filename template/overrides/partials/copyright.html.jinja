@@ -1,0 +1,17 @@
+{#- The theme's copyright partial, plus a link to the Impressum. -#}
+<div class="md-copyright">
+  {% if config.copyright %}
+    <div class="md-copyright__highlight">
+      {{ config.copyright }}
+    </div>
+  {% endif %}
+[% if impressum_url %]
+  <a href="[[ impressum_url ]]">Impressum</a>
+[% endif %]
+  {% if not config.extra.generator == false %}
+    · Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  {% endif %}
+</div>

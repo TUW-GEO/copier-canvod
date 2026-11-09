@@ -1,0 +1,70 @@
+---
+name: canvodpy-dependency
+description: Change or update what [[ dist_name ]] takes from canvodpy (root [tool.uv.sources], version bounds, relocking against a canvodpy branch or PyPI). Use when the package needs new canvodpy code, a canvodpy branch moved or was deleted, canvodpy was released, or uv lock fails with conflicting URLs.
+---
+
+# [[ dist_name ]]'s dependency on canvodpy
+
+## What depends on what
+
+[[ dist_name ]] needs [[ canvodpy_deps | join(', ') ]] (keep this list
+current when the imports change).
+
+The package `pyproject.toml` states version bounds. The root
+`pyproject.toml` `[tool.uv.sources]` decides where the packages come from
+in this workspace: a canvodpy git branch while the package needs unreleased
+canvodpy code, PyPI once it is released. Sources are not published: an
+install from a tag of this repo resolves canvodpy from PyPI, by the bounds.
+So a release here must only need canvodpy code that is on PyPI.
+
+## See what is locked
+
+```bash
+just canvodpy-ref
+```
+
+Version and source tree of every canvodpy package. They can differ per
+package: a package not in root `[tool.uv.sources]` comes from PyPI even
+while others come from a branch.
+
+While any canvodpy package comes from a branch, list `canvodpy` itself in
+root `[tool.uv.sources]` too (subdirectory `canvodpy`, same branch). Then
+every canvodpy package resolves from one commit; otherwise canvodpy and the
+packages it pulls in come from PyPI, an older state, and the package is
+tested against a canvodpy it will not run with.
+
+## Pick up new commits of a canvodpy branch
+
+```bash
+just lock-canvodpy
+```
+
+It upgrades every package that comes from the canvodpy repository at once
+and prints the locked commit. Don't run `uv lock --upgrade-package
+canvod-readers` alone: uv keeps the locked commit of a git repository while
+any package from it is not upgraded, so the lock silently stays on the old
+commit. Then `uv sync` and `just test`.
+
+## Point at another branch, or back to PyPI
+
+- Another branch: change `branch = "..."` on every canvodpy line in root
+  `[tool.uv.sources]`, then `just lock-canvodpy`. All lines name the same
+  branch; mixed branches give conflicting URLs.
+- canvodpy released: delete the canvodpy lines from root
+  `[tool.uv.sources]`, raise the lower bounds in the package
+  `pyproject.toml` to that release (e.g. `canvod-readers>=1.0.0`), then
+  `uv lock` and check `grep -c "TUW-GEO/canvodpy.git" uv.lock` is 0.
+- A branch was deleted after its PR merged: switch to PyPI if released,
+  otherwise to `branch = "main"` or a `rev = "<merge commit>"`.
+
+## The one-week wait
+
+`uv lock` takes only package files that have been on PyPI for at least a
+week (`exclude-newer = "1 week"` in root `[tool.uv]`). A minimum version
+raised by hand must be a release at least a week old, or `uv lock` fails.
+The packages released from canvodpy are exempt (`exclude-newer-package`),
+so a canvodpy release can be locked right away. A new package in canvodpy
+goes on that list, and on the Dependabot cooldown `exclude` list in
+`.github/dependabot.yml`. `just check-wait-exemptions` (weekly in CI)
+fails when a list misses a released canvodpy package or names one that is
+not released.

@@ -1,0 +1,73 @@
+name: Docs Quality
+
+on:
+    workflow_dispatch: # the full link check, started by hand
+    workflow_call: # from ci.yml
+        inputs:
+            # ci.yml checks the links between our pages only, except in its
+            # weekly run: an outside server must not fail a pull request or
+            # a run by hand.
+            offline_links:
+                type: boolean
+                default: false
+
+permissions:
+    contents: read
+
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+    language:
+        # Vale (Google style) on the docs pages the pull request changes.
+        if: github.event_name == 'pull_request'
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0 # the diff against the base branch
+            - uses: ./.github/actions/setup
+            - name: Install just
+              uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
+              with:
+                  tool: just
+            - name: Check the language of the changed docs pages
+              run: just docs-lint-changed "origin/${{ github.base_ref }}"
+
+    links:
+        # lychee on the built site: links between our pages, their anchors,
+        # and external links (settings in lychee.toml). Pull requests and
+        # pushes check the links between our pages and their anchors only
+        # (--offline): an outside server that is down for an hour must not
+        # fail a pull request. The weekly run of ci.yml, or a run of this
+        # workflow by hand, also checks the external links (links go stale
+        # without a change here) and opens an issue when one fails.
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            issues: write
+        env:
+            FULL: ${{ !inputs.offline_links }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: ./.github/actions/setup
+            - name: Build the docs site
+              run: uv run zensical build --clean
+            - name: Check every link of the built site
+              uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+              with:
+                  args: ${{ env.FULL != 'true' && '--offline' || '' }} --root-dir "${{ github.workspace }}/site" 'site/**/*.html'
+                  output: lychee/out.md
+                  fail: true
+            - name: Open an issue for the failed external links
+              if: failure() && env.FULL == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  TITLE: 'Docs: external links failed the weekly link check'
+              run: |
+                  number=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number --jq '.[0].number')
+                  if [ -n "$number" ]; then
+                      gh issue comment "$number" --body-file lychee/out.md
+                  else
+                      gh issue create --title "$TITLE" --label documentation --body-file lychee/out.md
+                  fi
